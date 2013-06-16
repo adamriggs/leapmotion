@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script type="text/javascript" src="src/base.js"></script>
+		
+		<script type="text/javascript" src="src/Perlin.js"></script>
+		<script type="text/javascript" src="src/PerlinSimplex.js"></script>
+		<style type="text/css">
+			html {
+				font-size: .6em;
+				line-height: 1.5em;
+				font-family: verdana, arial;
+			}
+			canvas {
+				border: 1px solid black;
+				width: 200px;
+				height: 200px;
+			}
+			ul#noises {
+				margin: 0px;
+				padding: 0px;
+				list-style: none;
+			}
+				ul#noises li {
+					float: left;
+					overflow: hidden;
+					width: 210px;
+				}
+			ul.authors {
+				margin: 0px;
+				padding: 0px 0px 0px 10px;
+			}
+			.clear {
+				clear: both;
+			}
+		</style>
+	</head>
+	<body>
+		<script type="text/javascript">
+			var mBody = document.getElementsByTagName('body')[0];
+			var iW = 50;
+			var iH = 50;
+			var t;
+			var s;
+			var mCanvas;
+			var oContext;
+			var aPixels;
+			var fScl;
+			var i,j,ii;
+			var x,y,xx,yy;
+			var mUl,mLi,mP,mBut,N;
+			var iTestRuns = 10;
+			var fDff;
+			//
+			//
+			//
+			mUl = addChild(mBody,'ul');
+			mUl.setAttribute('id','noises');
+			//
+			//
+			trace("asdf",0xFF+1)
+			var a, i, t;
+			//
+			t = millis();
+			for (i=0;i<23;i++) {
+				a *= 2;
+			}
+			trace("t:",millis()-t);
+			//
+			//
+			//
+			//
+			var aNfo = [
+				{
+					 title: "classic"
+					,fnc: Perlin
+					,animate: 0
+				},{
+					 title: "simplex:"
+					,fnc: PerlinSimplex
+					,animate: 0
+				}
+			];
+			var zz = Math.random()*100;
+			var P;
+			var fNoise;
+			for (j=0;j<aNfo.length;j++) {
+				var oNfo = aNfo[j]
+				//
+				P = oNfo.fnc;
+				//
+				t = millis();
+				mLi = addChild(mUl,'li');
+				mCanvas = addChild(mLi,'canvas');
+				mCanvas.height = iW;
+				mCanvas.width = iH;
+				//
+				oContext = mCanvas.getContext("2d")
+				oImgData = oContext.getImageData(0,0,iW,iH);
+				aPixels = oImgData.data;
+				//
+				//
+				oNfo.context = oContext;
+				oNfo.image = oImgData;
+				oNfo.pixels = aPixels;
+				//
+				for (k=0;k<iTestRuns;k++)  {
+
+					//
+					////
+					//////
+					Prng.seed = 282;
+					P.setRng(Prng);
+					P.noiseDetail(3,.5);
+					fScl = .0422;
+					//////
+					////
+					//
+
+					if (k===0) trace(P);
+
+					for (i = 0; i < aPixels.length; i += 4) {
+						ii = Math.floor(i/4);
+						x = ii%iW;
+						y = Math.floor(ii/iW);
+						xx = 0+x*fScl;
+						yy = 0+y*fScl;
+						fNoise = Math.floor(P.noise(xx,yy,zz)*256);
+						aPixels[i] = aPixels[i+1] = aPixels[i+2] = fNoise;
+						aPixels[i+3] = 255;
+					}
+					oContext.putImageData(oImgData, 0, 0)
+				}
+				var sNfo = '<h3>'+oNfo.title+'</h3>';
+				sNfo += '<p>speed: <strong id="spd'+j+'">'+Math.round((millis()-t)/iTestRuns)+'</strong></p>';
+				sNfo += '</ul>';
+				N = addChild(mLi,'div');
+				N.innerHTML = sNfo;
+				//
+				oNfo.speed = document.getElementById('spd'+j);
+				//
+				mBut = addChild(mLi,'input');
+				mBut.setAttribute("type","button");
+				mBut.setAttribute("value","play");
+				var halper = function(o,i) {
+					return function(e) {
+						var bPaused = o.animate===0;
+						e.currentTarget.setAttribute("value",bPaused?"stop":"play");
+						if (bPaused) {
+							o.animate = setInterval(function(){run(i);},1);
+						} else {
+							clearInterval(o.animate);
+							o.animate = 0;
+						}
+					}
+				}
+				mBut.addEventListener("click",halper(oNfo,j),false);
+			}
+			//
+			//
+			//
+			//
+			//
+			var fDeltaT = 0;
+			var fLastTime = 0;
+			setInterval(function(){
+				fDeltaT = millis()-fLastTime
+				fLastTime = millis();
+			},1);
+			//
+			//
+			//
+			//
+			//
+			var fTime = 0;
+			var fBaseSpeed = .0001;
+			var fSpeed = fBaseSpeed;
+			var iNoiseType = 0;
+			var run = function run(j) {
+				var oNfo = aNfo[j]
+				P = oNfo.fnc;
+				oContext = oNfo.context;
+				oImgData = oNfo.image;
+				aPixels = oNfo.pixels;
+				//
+				fTime += fDeltaT*fSpeed;
+				zz = fTime;//millis()*fSpeed;
+				//
+				t = millis();
+				for (i = 0; i < aPixels.length; i += 4) {
+					ii = Math.floor(i/4);
+					x = ii%iW;
+					y = Math.floor(ii/iW);
+					fDff = j==0?1.5:1;
+					xx = 0+x*fScl*fDff;
+					yy = 0+y*fScl*fDff;
+					switch (iNoiseType) {
+						case 0: fNoise = Math.floor(P.noise(xx,yy,zz)*256); break; // normal
+						case 1: fNoise = P.noise(xx,yy,zz)>.5?0:256; break; // bw
+						case 2: fNoise = ((P.noise(xx,yy,zz)*8)%2)<1?0:256; break; // bwbwbw
+						case 3: fNoise = P.noise(xx,yy,zz)*1024%256; break; // repeat
+						case 4: fNoise = Math.abs(P.noise(xx,yy,zz)-.5)*4096; break; // lines
+						case 5: fNoise = 256-Math.floor(Math.pow(P.noise(xx,yy,zz)*4,y)); break; // mud
+						case 6: fNoise = Math.floor(P.noise(3*xx,yy-2*zz,zz)*256); break; // falling
+						case 7:
+							var fXDff = x-.5*iW;
+							var fYDff = y-.5*iH;
+							var fDst = Math.sqrt(fXDff*fXDff+fYDff*fYDff)/iW;
+							fNoise = Math.floor(fDst*fDst*(P.noise(xx,yy,zz)-.2)*4096);
+						break; // falling
+					}
+					aPixels[i] = aPixels[i+1] = aPixels[i+2] = fNoise;
+					aPixels[i+3] = 255;
+				}
+				oNfo.speed.innerText = millis()-t;
+				oContext.putImageData(oImgData, 0, 0)
+			}
+			//
+			//
+			//
+			addChild(mBody,'br').setAttribute('style','clear:both;');
+			addChild(mBody,'br');
+			//
+			//
+			//
+			var aPerlinTypes = ["normal","b/w","b/w+","repeat","lines","mud","falling","smoke"];
+			for (i=0;i<aPerlinTypes.length;i++) {
+				mBut = addChild(mBody,'input');
+				mBut.setAttribute("type","button");
+				mBut.setAttribute("value",aPerlinTypes[i]);
+				var helper = function(i) {
+					return function(e) {
+						iNoiseType = i;
+						for (j=0;j<aNfo.length;j++) {
+							if (aNfo[j].animate===0) {
+								run(j);
+							}
+						}
+					}
+				}
+				mBut.addEventListener("click",helper(i),false);
+			}
+			//
+			addChild(mBody,'br');
+			addChild(mBody,'br');
+			//
+			var aSpeeds = ["slower","normal","faster"];
+			for (i=0;i<aSpeeds.length;i++) {
+				mBut = addChild(mBody,'input');
+				mBut.setAttribute("type","button");
+				mBut.setAttribute("value",aSpeeds[i]);
+				var helper = function(i) {
+					return function(e) {
+						var iK = 2;
+						switch (i) {
+							case 0: fSpeed /= iK; break;
+							case 1: fSpeed = fBaseSpeed; break;
+							case 2: fSpeed *= iK; break;
+						}
+					}
+				}
+				mBut.addEventListener("click",helper(i),false);
+			}
+		</script>
+		<p>Both Perlin and PerlinSimplex are already instantiated as global variables. Both implement the same methods.</p>
+		<p>Simply call Perlin.noise(x,y,z) to get a noise value (y and z are optional).</p>
+		<p>You can set the amount of octaves and falloff by calling Perlin.noisedetail(octaves,falloff). Octaves can be any whole number greater than zero (but the higher the number, the slower the render). The falloff should be a floating point between 0 and 1 (0.5 usually works just fine).</p>
+		<p>By default Math is used for random number generation. This works fine for static field but is useless for animation because Math.random() cannot be seeded. For this example I've implemented a very simple pseudo random number generator. You can very easily implement your own by setting Perlin.setRng(myRng) as long as it has the 'random' method.</p>
+	</body>
+</html>
